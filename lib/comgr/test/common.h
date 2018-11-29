@@ -124,7 +124,7 @@ amd_comgr_status_t print_entry(amd_comgr_metadata_node_t key,
   amd_comgr_status_t status;
   size_t size;
   char keybuf[50];
-  char buf[50];
+  char *buf = NULL;
   int *indent = (int *)data;
 
   // assume key to be string in this test function
@@ -147,9 +147,11 @@ amd_comgr_status_t print_entry(amd_comgr_metadata_node_t key,
     printf("%s  :  ", size ? keybuf : "");
     status = amd_comgr_get_metadata_string(value, &size, NULL);
     checkError(status, "amd_comgr_get_metadata_string");
+    buf = (char*)malloc(size);
     status = amd_comgr_get_metadata_string(value, &size, buf);
     checkError(status, "amd_comgr_get_metadata_string");
     printf(" %s\n", buf);
+    free(buf);
     break;
   }
   case AMD_COMGR_METADATA_KIND_LIST: {

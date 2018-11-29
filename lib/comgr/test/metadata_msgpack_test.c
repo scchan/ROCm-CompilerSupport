@@ -37,18 +37,36 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include "common.h"
 
 int main(int argc, char *argv[]) {
   char *arg = NULL;
   long size1;
   char *buf;
+  char *input_file = NULL;
   amd_comgr_data_t dataIn;
   amd_comgr_status_t status;
   amd_comgr_metadata_kind_t mkind = AMD_COMGR_METADATA_KIND_NULL;
 
+  while (1) {
+    char cmd_switch = getopt(argc, argv, "i:");
+    if (cmd_switch == -1)
+      break;
+    switch (cmd_switch) {
+      case 'i':
+        input_file = optarg;
+        break;
+      default:
+        abort();
+    }
+  }
+
   // Read input file
-  size1 = setBuf(TEST_OBJ_DIR "/shared-v3.so", &buf);
+  if (input_file == NULL) {
+    input_file = TEST_OBJ_DIR "/shared-v3.so";
+  }
+  size1 = setBuf(input_file, &buf);
 
   // Create data object
   {
@@ -66,7 +84,7 @@ int main(int argc, char *argv[]) {
 
   // Get metadata from data object
   {
-    printf("Get metadata from shared.so\n");
+    printf("Get metadata from %s\n", input_file);
 
     amd_comgr_metadata_node_t meta;
     status = amd_comgr_get_data_metadata(dataIn, &meta);
@@ -83,7 +101,13 @@ int main(int argc, char *argv[]) {
     amd_comgr_metadata_node_t metaLookup;
     amd_comgr_metadata_kind_t mkindLookup;
     status = amd_comgr_metadata_lookup(meta, "amdhsa.version", &metaLookup);
-    checkError(status, "amd_comgr_metadata_lookup");
+    if (status != AMD_COMGR_STATUS_SUCCESS) {
+      // If the lookup for "amdhsa.version" (object format v3) fails
+      // then look for "Version" instead (object format v2)
+      status = amd_comgr_metadata_lookup(meta, "Version", &metaLookup);
+      checkError(status, "amd_comgr_metadata_lookup");
+    }
+
     status = amd_comgr_get_metadata_kind(metaLookup, &mkindLookup);
     checkError(status, "amd_comgr_get_metadata_kind");
     if (mkindLookup != AMD_COMGR_METADATA_KIND_LIST) {
